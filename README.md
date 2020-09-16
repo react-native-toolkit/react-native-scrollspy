@@ -10,13 +10,7 @@ npm install react-native-scrollspy
 
 ## Usage
 
-```js
-import Scrollspy from "react-native-scrollspy";
-
-// ...
-
-const result = await Scrollspy.multiply(3, 7);
-```
+Documentation is WIP for this library. Refer the example app for Usage details.
 
 ## Contributing
 
