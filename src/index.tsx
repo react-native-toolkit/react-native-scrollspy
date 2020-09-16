@@ -19,8 +19,10 @@ export type positionType = {
 };
 
 export interface ScrollProps extends ScrollViewProps {
-  activeOffset: number;
+  activeOffset?: number;
   children: (arg: (prop: positionType) => unknown) => ReactNode;
+  scrollViewRef?: React.RefObject<ScrollView>;
+  onActiveSectionChange?: (identifier: string) => unknown;
 }
 
 export interface ScrollState {
@@ -30,21 +32,45 @@ export interface ScrollState {
 }
 
 export class Scroll extends Component<ScrollProps, ScrollState> {
+  scrollRef = React.createRef<ScrollView>();
+
   constructor(props: ScrollProps) {
     super(props);
     this.state = {
       positions: {},
     };
+    if (props.scrollViewRef) {
+      this.scrollRef = props.scrollViewRef;
+    }
   }
-  scrollRef = React.createRef<ScrollView>();
 
   onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { onScroll: onScrollProp } = this.props;
+    const {
+      onScroll: onScrollProp,
+      activeOffset = 0,
+      horizontal,
+      onActiveSectionChange,
+    } = this.props;
     const {
       nativeEvent: {
-        contentOffset: {},
+        contentOffset: { x, y },
       },
     } = event;
+
+    for (const each in this.state.positions) {
+      if (!horizontal) {
+        if (y + activeOffset < this.state.positions?.[each]?.y) {
+          onActiveSectionChange && onActiveSectionChange(each);
+          break;
+        }
+      } else {
+        if (x + activeOffset < this.state.positions?.[each]?.x) {
+          onActiveSectionChange && onActiveSectionChange(each);
+          break;
+        }
+      }
+    }
+
     onScrollProp && onScrollProp(event);
   };
 
@@ -57,57 +83,43 @@ export class Scroll extends Component<ScrollProps, ScrollState> {
     });
   };
 
-  scrollToSpy = (identifier: string) => {
-    this.scrollRef.current?.scrollTo(this.state.positions[identifier]);
+  scrollToSpy = (identifier: string, animated = true) => {
+    this.scrollRef.current?.scrollTo({
+      ...this.state.positions[identifier],
+      animated,
+    });
   };
 
-  componentDidMount() {
-    setTimeout(() => {
-      this.scrollToSpy('150');
-    }, 3000);
-  }
-
   render() {
-    const { children, ...otherProps } = this.props;
-
-    console.log(this.state.positions);
+    const {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onScroll: onScrollProp,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      activeOffset,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      onActiveSectionChange,
+      children,
+      scrollEventThrottle = 16,
+      ...otherProps
+    } = this.props;
 
     return (
-      <ScrollView ref={this.scrollRef} {...otherProps}>
+      <ScrollView
+        scrollEventThrottle={scrollEventThrottle}
+        onScroll={this.onScroll}
+        ref={this.scrollRef}
+        {...otherProps}
+      >
         {children(this.updateScrollPositions)}
       </ScrollView>
     );
   }
 }
 
-// export const Scroll = forwardRef<ScrollView, ScrollProps>(
-//   ({ onScroll: onScrollProp, children, ...otherProps }, ref) => {
-//     const [positions, setPositions] = useState<{
-//       [key: string]: { x: number; y: number };
-//     }>({});
-
-//     const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-//       const {
-//         nativeEvent: {
-//           contentOffset: { y, x },
-//         },
-//       } = event;
-//       onScrollProp && onScrollProp(event);
-//     };
-
-//     console.log(positions);
-
-//     return (
-//       <ScrollView ref={ref} onScroll={onScroll} {...otherProps}>
-//         {children(setPositions)}
-//       </ScrollView>
-//     );
-//   }
-// );
-
 export interface SpyProps extends ViewProps {
   identifier: string;
   locator: (prop: positionType) => unknown;
+  children?: ReactNode;
 }
 
 export const Spy = ({
